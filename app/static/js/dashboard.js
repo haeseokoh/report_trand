@@ -84,20 +84,24 @@ async function loadMarketIntelligence(forceRefresh = false) {
       <span class="ai-sector-pill"># ${s}</span>
     `).join('');
     
-    const sourcesHtml = (data.source_reports || []).map(r => `
-      <div class="ai-source-item">
+    const sourcesHtml = (data.source_reports || []).map(r => {
+      const fullTitle = `${r.company_or_sector ? `[${r.company_or_sector}] ` : ''}${r.title}`;
+      const tooltipText = `📄 리포트 원문 풀네임:\n${fullTitle}\n\n• 발행 증권사: ${r.broker || '증권사'}\n• 작성일자: ${r.report_date}\n\n👉 클릭 시 AI 3줄 요약이 열립니다.`;
+      
+      return `
+      <div class="ai-source-item" title="${escapeHtml(tooltipText)}">
         <div class="ai-source-info">
           <span class="cat-badge cat-company" style="font-size:0.7rem; padding:0.1rem 0.4rem;">${r.broker || '증권'}</span>
-          <span class="ai-source-title" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')">
-            ${r.company_or_sector ? `[${r.company_or_sector}] ` : ''}${r.title}
+          <span class="ai-source-title" title="${escapeHtml(tooltipText)}" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')">
+            ${fullTitle}
           </span>
         </div>
         <div style="display:flex; align-items:center; gap:0.5rem;">
           <span class="ai-source-meta">${r.report_date}</span>
-          ${r.pdf_url ? `<a href="${r.pdf_url}" target="_blank" class="pdf-btn" style="padding:0.15rem 0.4rem; font-size:0.7rem;">PDF ↗</a>` : ''}
+          ${r.pdf_url ? `<a href="${r.pdf_url}" target="_blank" class="pdf-btn" style="padding:0.15rem 0.45rem; font-size:0.72rem;" title="클릭하여 원문 PDF 파일 열기">PDF ↗</a>` : ''}
         </div>
       </div>
-    `).join('');
+    `;}).join('');
     
     container.innerHTML = `
       <div class="ai-headline">"${data.headline || '시장 인텔리전스'}"</div>
@@ -387,7 +391,7 @@ async function fetchReports() {
           <td><span class="cat-badge ${cat.cls}">${cat.name}</span></td>
           <td><strong style="color: #e2e8f0;">${r.company_or_sector || '-'}</strong></td>
           <td>
-            <a href="javascript:void(0)" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" class="report-title-link">
+            <a href="javascript:void(0)" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" class="report-title-link" title="📄 전체 제목:\n${escapeHtml(r.title)}\n\n👉 클릭 시 AI 3줄 요약 보기">
               ${r.title}
             </a>
             ${summary}
@@ -396,10 +400,10 @@ async function fetchReports() {
           <td style="font-size: 0.85rem; color: #94a3b8;">${r.report_date}</td>
           <td>
             <div class="table-actions">
-              <button class="btn-table-ai" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')">
+              <button class="btn-table-ai" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" title="AI 3줄 요약 모달 열기">
                 <span>🤖</span> AI요약
               </button>
-              <a href="${r.pdf_url}" target="_blank" class="pdf-btn">
+              <a href="${r.pdf_url}" target="_blank" class="pdf-btn" title="원문 PDF 파일 열기">
                 <span>PDF</span> ↗
               </a>
             </div>
@@ -569,18 +573,21 @@ async function openThemeAiModal(themeName) {
         <div class="modal-section" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08);">
           <div class="modal-section-title" style="color: #93c5fd;"><span>📚</span> 분석에 참고한 원본 리포트 (${data.source_reports.length}건)</div>
           <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem;">
-            ${data.source_reports.map(r => `
-              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:0.45rem 0.75rem; border-radius:6px; font-size:0.8rem; border:1px solid rgba(255,255,255,0.04);">
+            ${data.source_reports.map(r => {
+              const fullT = `${r.company_or_sector ? `[${r.company_or_sector}] ` : ''}${r.title}`;
+              const tTip = `📄 풀네임: ${fullT}\n증권사: ${r.broker} | 일자: ${r.report_date}`;
+              return `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:0.45rem 0.75rem; border-radius:6px; font-size:0.8rem; border:1px solid rgba(255,255,255,0.04);" title="${escapeHtml(tTip)}">
                 <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; margin-right:0.5rem;">
                   <span class="cat-badge cat-company" style="font-size:0.68rem; padding:0.1rem 0.35rem; margin-right:0.35rem;">${r.broker || '증권'}</span>
-                  <span style="color:#e2e8f0; cursor:pointer;" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')">${r.title}</span>
+                  <span style="color:#e2e8f0; cursor:pointer;" title="${escapeHtml(tTip)}" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')">${fullT}</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:0.4rem; white-space:nowrap;">
                   <span style="color:var(--text-muted); font-size:0.72rem;">${r.report_date}</span>
-                  ${r.pdf_url ? `<a href="${r.pdf_url}" target="_blank" class="pdf-btn" style="padding:0.15rem 0.4rem; font-size:0.7rem;">PDF ↗</a>` : ''}
+                  ${r.pdf_url ? `<a href="${r.pdf_url}" target="_blank" class="pdf-btn" style="padding:0.15rem 0.4rem; font-size:0.7rem;" title="PDF 열기">PDF ↗</a>` : ''}
                 </div>
               </div>
-            `).join('')}
+            `;}).join('')}
           </div>
         </div>
       ` : ''}
