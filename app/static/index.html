@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock & Industry Report Trend Intelligence</title>
+  <meta name="description" content="증권사 및 산업 리포트 크롤링 기반 트렌드, 급상승 테마 및 핵심 키워드 인텔리전스 대시보드">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  
+  <!-- Chart.js & WordCloud2 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">📈</div>
+      <div>
+        <div class="brand-title">리포트 트렌드 인텔리전스</div>
+      </div>
+      <span class="brand-badge">PRO v1.1 + LLM</span>
+    </div>
+    
+    <div class="nav-actions">
+      <!-- Ollama Model Selector -->
+      <div class="model-select-wrapper">
+        <span class="model-label">⚡ AI 모델</span>
+        <select id="llm-model-select" class="model-select" onchange="changeLlmModel()">
+          <option value="qwen2.5:7b" selected>Qwen 2.5 7B (고속)</option>
+          <option value="qwen2.5:14b">Qwen 2.5 14B (심층)</option>
+        </select>
+      </div>
+
+      <button id="btn-run-crawler" class="btn-primary" onclick="triggerCrawl()">
+        <span id="crawler-btn-icon">⚡</span>
+        <span id="crawler-btn-text">최신 리포트 수집 & 분석</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-container">
+    
+    <!-- Top Stat KPI Cards -->
+    <section class="stats-grid">
+      <div class="stat-card card-blue">
+        <div class="stat-label">수집된 리포트</div>
+        <div class="stat-value" id="stat-total-reports">-</div>
+        <div class="stat-sub">
+          <span class="stat-tag">DB 보관</span> 전체 증권사 리포트
+        </div>
+      </div>
+      
+      <div class="stat-card card-emerald">
+        <div class="stat-label">분석 완료 본문</div>
+        <div class="stat-value" id="stat-processed-reports">-</div>
+        <div class="stat-sub">
+          <span class="stat-tag">NLP 파싱</span> 형태소 키워드 추출됨
+        </div>
+      </div>
+      
+      <div class="stat-card card-purple">
+        <div class="stat-label">트래킹 종목 / 섹터</div>
+        <div class="stat-value" id="stat-total-sectors">-</div>
+        <div class="stat-sub">
+          <span class="stat-tag">다양성</span> 산업 및 개별 기업
+        </div>
+      </div>
+      
+      <div class="stat-card card-amber">
+        <div class="stat-label">실시간 급상승 핫 테마</div>
+        <div class="stat-value" id="stat-hot-theme" style="font-size: 1.35rem; padding-top: 0.35rem;">-</div>
+        <div class="stat-sub">
+          <span class="stat-tag">Surge TOP 3</span> 언급 빈도 급증
+        </div>
+      </div>
+    </section>
+
+    <!-- [NEW] AI Market Intelligence Brief Banner -->
+    <section class="ai-intel-banner" id="ai-market-banner">
+      <div class="ai-intel-header">
+        <div class="ai-intel-title">
+          <span>✨</span> 데일리 AI 마켓 인텔리전스 브리프
+          <span class="ai-sparkle-badge" id="ai-badge-model">Qwen 2.5</span>
+        </div>
+        <button class="btn-refresh-ai" onclick="loadMarketIntelligence(true)">
+          <span>🔄</span> 다시 생성
+        </button>
+      </div>
+
+      <div id="ai-intel-content">
+        <div style="text-align: center; color: #cbd5e1; padding: 1.5rem;">
+          <div class="spinner spinner-purple" style="margin-bottom: 0.5rem;"></div>
+          <div>로컬 AI 모델이 최근 리포트를 종합 분석 중입니다...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Grid: Surge Ranking & WordCloud -->
+    <section class="dashboard-grid">
+      
+      <!-- Surge Keywords Card -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="card-title-icon">🚀</span> 급상승 키워드 & 테마 (Surge Index)
+          </div>
+          <span class="badge-tag">클릭 시 AI 테마 브리프</span>
+        </div>
+        
+        <div class="surge-list" id="surge-container">
+          <div style="text-align: center; color: var(--text-muted); padding: 2rem;">데이터를 불러오는 중입니다...</div>
+        </div>
+      </div>
+
+      <!-- WordCloud Card -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="card-title-icon">☁️</span> 리포트 핵심 키워드 워드클라우드
+          </div>
+          <span class="badge-tag">전체 빈도 TOP 50</span>
+        </div>
+        
+        <div class="wordcloud-container">
+          <canvas id="wordcloud-canvas"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Secondary Grid: Timeline Chart & Sector Distribution -->
+    <section class="secondary-grid">
+      
+      <!-- Keyword Timeline Chart -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="card-title-icon">📊</span> 주요 테마 언급 추이 타임라인
+          </div>
+          <span class="badge-tag">일자별 빈도</span>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="timeline-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Sector Top Keywords -->
+      <div class="dashboard-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="card-title-icon">🏭</span> 섹터별 리포트 & 핵심 이슈
+          </div>
+          <span class="badge-tag">섹터 관심도</span>
+        </div>
+        
+        <div class="sector-list" id="sector-container">
+          <div style="text-align: center; color: var(--text-muted); padding: 2rem;">데이터 로딩 중...</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Bottom Section: Reports Explorer -->
+    <section class="reports-section">
+      <div class="card-header" style="border: none; margin-bottom: 0.5rem; padding-bottom: 0;">
+        <div class="card-title">
+          <span class="card-title-icon">📑</span> 수집 리포트 탐색기 & AI 3줄 요약
+        </div>
+      </div>
+      
+      <div class="reports-filter-bar">
+        <div class="filter-group">
+          <button class="filter-btn active" onclick="filterReports('')">전체</button>
+          <button class="filter-btn" onclick="filterReports('company')">기업 리포트</button>
+          <button class="filter-btn" onclick="filterReports('industry')">산업 분석</button>
+          <button class="filter-btn" onclick="filterReports('market')">시황/전략</button>
+        </div>
+        
+        <input 
+          type="text" 
+          id="report-search" 
+          class="search-input" 
+          placeholder="종목명, 키워드, 제목 검색..." 
+          onkeyup="debounceSearch()"
+        />
+      </div>
+
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">분류</th>
+              <th style="width: 120px;">종목/섹터</th>
+              <th>리포트 제목 & 본문 서두</th>
+              <th style="width: 110px;">증권사</th>
+              <th style="width: 100px;">작성일</th>
+              <th style="width: 150px; text-align: center;">인사이트 & 원문</th>
+            </tr>
+          </thead>
+          <tbody id="reports-table-body">
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                리포트 데이터를 불러오는 중입니다...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- AI Modal Popup -->
+  <div class="modal-backdrop" id="ai-modal" onclick="handleModalBackdropClick(event)">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">
+          <span>🤖</span> AI 심층 분석 브리프
+        </div>
+        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      
+      <div class="modal-body" id="modal-body">
+        <div style="text-align: center; padding: 3rem; color: #94a3b8;">
+          <div class="spinner spinner-purple" style="margin-bottom: 0.75rem;"></div>
+          <div>로컬 Qwen 2.5 모델이 분석을 생성하고 있습니다...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Javascript Logic -->
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Web & Network
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+urllib3>=2.0.0
+
+# PDF & Text Processing
+pypdf>=4.0.0
+pymupdf>=1.23.0
+
+# NLP & Analysis
+kiwipiepy>=0.17.0
+scikit-learn>=1.4.0
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Web Application Backend
+fastapi>=0.110.0
+uvicorn>=0.28.0
+aiofiles>=23.2.0
