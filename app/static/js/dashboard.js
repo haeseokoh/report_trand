@@ -7,6 +7,7 @@ let currentLlmModel = 'qwen2.5:7b';
 
 // Initialize on Load
 document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
   loadModels();
   loadDashboardData();
   loadMarketIntelligence();
@@ -15,6 +16,36 @@ document.addEventListener("DOMContentLoaded", () => {
   // 15초마다 크롤러 상태 확인
   setInterval(checkCrawlerStatus, 15000);
 });
+
+function initTheme() {
+  const savedTheme = localStorage.getItem('app-theme') || 'dark';
+  applyTheme(savedTheme);
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.contains('theme-light');
+  const newTheme = isLight ? 'dark' : 'light';
+  applyTheme(newTheme);
+  localStorage.setItem('app-theme', newTheme);
+  // 차트 및 워드클라우드 재렌더링
+  if (typeof fetchTopKeywordsAndWordCloud === 'function') {
+    fetchTopKeywordsAndWordCloud();
+  }
+}
+
+function applyTheme(theme) {
+  const icon = document.getElementById('theme-toggle-icon');
+  const text = document.getElementById('theme-toggle-text');
+  if (theme === 'light') {
+    document.body.classList.add('theme-light');
+    if (icon) icon.innerText = '🌙';
+    if (text) text.innerText = '다크 모드';
+  } else {
+    document.body.classList.remove('theme-light');
+    if (icon) icon.innerText = '☀️';
+    if (text) text.innerText = '라이트 모드';
+  }
+}
 
 async function loadModels() {
   try {
