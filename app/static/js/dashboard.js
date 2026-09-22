@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initTheme() {
-  const savedTheme = localStorage.getItem('app-theme') || 'dark';
+  const savedTheme = localStorage.getItem('app-theme') || 'light';
   applyTheme(savedTheme);
 }
 

@@ -851,7 +851,7 @@ body {
   display: flex;
 }
 
-.modal-box {
+.modal-container, .modal-box {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -882,16 +882,16 @@ body {
   gap: 0.4rem;
 }
 
-.modal-close {
+.modal-close-btn, .modal-close {
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   cursor: pointer;
   line-height: 1;
 }
 
-.modal-close:hover {
+.modal-close-btn:hover, .modal-close:hover {
   color: var(--text-primary);
 }
 
