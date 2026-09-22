@@ -242,36 +242,45 @@ async function fetchSurgeKeywords() {
 // 3. WordCloud & Top Keywords
 async function fetchTopKeywordsAndWordCloud() {
   try {
-    const res = await fetch('/api/keywords/top?top_n=50');
+    const res = await fetch('/api/keywords/top?top_n=80');
     if (!res.ok) return;
     
     const keywords = await res.json();
     const canvas = document.getElementById('wordcloud-canvas');
     if (!canvas || !keywords || keywords.length === 0) return;
     
-    canvas.width = canvas.parentElement.clientWidth;
+    const containerWidth = canvas.parentElement.clientWidth || 550;
+    canvas.width = containerWidth;
     canvas.height = 360;
     
     const list = keywords.map(k => [k.text, k.value]);
     const maxVal = Math.max(...keywords.map(k => k.value), 1);
+    const isLight = document.body.classList.contains('theme-light');
     
     WordCloud(canvas, {
       list: list,
-      gridSize: 8,
+      gridSize: 4,
       weightFactor: function (size) {
-        return Math.max(14, (size / maxVal) * 48);
+        // 비선형 스케일링: 작은 키워드도 14~24px 이상 유지하여 캔버스 빈 여백을 빽빽하게 채움
+        const ratio = Math.pow(size / maxVal, 0.42);
+        return Math.max(14, ratio * (canvas.width > 600 ? 54 : 42));
       },
-      fontFamily: 'Outfit, Pretendard, sans-serif',
+      fontFamily: 'Pretendard, Inter, -apple-system, sans-serif',
+      fontWeight: '600',
       color: function () {
-        const colors = ['#38bdf8', '#818cf8', '#34d399', '#f472b6', '#fbbf24', '#a78bfa', '#2dd4bf'];
-        return colors[Math.floor(Math.random() * colors.length)];
+        const darkColors = ['#60a5fa', '#38bdf8', '#34d399', '#f472b6', '#fbbf24', '#a78bfa', '#2dd4bf', '#818cf8'];
+        const lightColors = ['#1d4ed8', '#0284c7', '#059669', '#be123c', '#b45309', '#6d28d9', '#0f766e', '#4338ca'];
+        const palette = isLight ? lightColors : darkColors;
+        return palette[Math.floor(Math.random() * palette.length)];
       },
       backgroundColor: 'transparent',
-      rotateRatio: 0.25,
+      rotateRatio: 0.12,
       rotationSteps: 2,
-      minRotation: -Math.PI / 6,
-      maxRotation: Math.PI / 6,
+      minRotation: -Math.PI / 8,
+      maxRotation: Math.PI / 8,
       shuffle: true,
+      shrinkToFit: true,
+      drawOutOfBound: false,
       click: function(item) {
         openThemeAiModal(item[0]);
       }
