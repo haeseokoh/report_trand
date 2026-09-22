@@ -128,27 +128,47 @@ def get_unprocessed_reports(limit: int = 50) -> List[Dict[str, Any]]:
         return [dict(row) for row in cursor.fetchall()]
 
 def get_all_reports(limit: int = 100, category: Optional[str] = None, keyword: Optional[str] = None) -> List[Dict[str, Any]]:
-    """리포트 목록 조회 (필터 지원)"""
+    """리포트 목록 조회 (필터 지원 및 AI 요약 연동)"""
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        query = "SELECT id, category, title, company_or_sector, broker, author, report_date, pdf_url, summary_text, processed FROM reports WHERE 1=1"
+        query = """
+            SELECT 
+                r.id, r.category, r.title, r.company_or_sector, r.broker, r.author, 
+                r.report_date, r.pdf_url, r.summary_text, r.processed,
+                s.summary_json as ai_summary_json, s.model_name as ai_model
+            FROM reports r
+            LEFT JOIN report_ai_summaries s ON r.id = s.report_id
+            WHERE 1=1
+        """
         params = []
         
         if category:
-            query += " AND category = ?"
+            query += " AND r.category = ?"
             params.append(category)
         if keyword:
-            query += " AND (title LIKE ? OR company_or_sector LIKE ? OR summary_text LIKE ?)"
+            query += " AND (r.title LIKE ? OR r.company_or_sector LIKE ? OR r.summary_text LIKE ?)"
             kw_param = f"%{keyword}%"
             params.extend([kw_param, kw_param, kw_param])
             
-        query += " ORDER BY report_date DESC, id DESC LIMIT ?"
+        query += " ORDER BY r.report_date DESC, r.id DESC LIMIT ?"
         params.append(limit)
         
         cursor.execute(query, params)
-        return [dict(row) for row in cursor.fetchall()]
+        results = []
+        for row in cursor.fetchall():
+            item = dict(row)
+            if item.get("ai_summary_json"):
+                try:
+                    item["ai_summary"] = json.loads(item["ai_summary_json"])
+                except Exception:
+                    item["ai_summary"] = None
+            else:
+                item["ai_summary"] = None
+            item.pop("ai_summary_json", None)
+            results.append(item)
+        return results
 
 def get_processed_reports_for_analysis(start_date: Optional[str] = None, end_date: Optional[str] = None, category: Optional[str] = None) -> List[Dict[str, Any]]:
     """트렌드 분석용 텍스트 추출 완료 리포트 조회"""

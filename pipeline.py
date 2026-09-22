@@ -78,6 +78,31 @@ def run_pipeline(crawl_pages: int = 2, max_process_pdf: int = 40):
     print(f"\n✅ 텍스트 & 키워드 분석 완료: {success_count}/{len(pending_reports)}건 성공")
     
     print("\n" + "=" * 60)
+    print("🤖 [Step 3.5] Ollama (Qwen 2.5) AI 심층 3단 요약 사전 생성")
+    print("=" * 60)
+    try:
+        from processor.llm_summarizer import summarize_single_report, get_available_models
+        from db.database import get_report_ai_summary
+        
+        models = get_available_models()
+        chosen_model = "qwen2.5:7b" if "qwen2.5:7b" in models else (models[0] if models else "qwen2.5:7b")
+        
+        ai_target_count = 0
+        for report in pending_reports[:10]:
+            r_id = report["id"]
+            if not get_report_ai_summary(r_id):
+                try:
+                    print(f"  ⚡ AI 요약 진행 중: [{report.get('category', '기업')}] {report.get('title', '')[:30]}...")
+                    summarize_single_report(r_id, model=chosen_model)
+                    ai_target_count += 1
+                except Exception as ex:
+                    print(f"  ⚠️ AI 요약 건너뜀 (ID {r_id}): {ex}")
+                    break
+        print(f"✅ AI 심층 요약 완료: {ai_target_count}건 생성 (대시보드 클릭 시 0초 즉시 표시, 미생성 리포트는 클릭 시 온디맨드 생성)")
+    except Exception as e:
+        print(f"ℹ️ Ollama 서비스 상태 확인 ({e}) - 대시보드 온디맨드 요약 모드로 동작합니다.")
+
+    print("\n" + "=" * 60)
     print("📊 [Step 4] 트렌드 분석 요약 결과")
     print("=" * 60)
     summary = get_summary_insights()

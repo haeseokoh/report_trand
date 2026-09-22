@@ -384,7 +384,25 @@ async function fetchReports() {
     
     tbody.innerHTML = reports.map(r => {
       const cat = categoryMap[r.category] || { name: r.category, cls: 'cat-company' };
-      const summary = r.summary_text ? `<div class="report-summary-text">${r.summary_text}</div>` : '';
+      
+      let summaryHtml = '';
+      let hasAiSummary = false;
+      if (r.ai_summary && r.ai_summary.one_line_summary) {
+        hasAiSummary = true;
+        let sentClass = 'sentiment-neutral';
+        const sent = r.ai_summary.sentiment || '중립';
+        if (sent.includes('긍정') || sent.includes('Bullish')) sentClass = 'sentiment-bullish';
+        if (sent.includes('신중') || sent.includes('Bearish')) sentClass = 'sentiment-bearish';
+        
+        summaryHtml = `
+          <div class="report-ai-highlight">
+            <span class="sentiment-badge ${sentClass}" style="font-size:0.7rem; padding:0.15rem 0.45rem;">${escapeHtml(sent)}</span>
+            <span class="report-ai-text"><strong>✨ AI 결론:</strong> ${escapeHtml(r.ai_summary.one_line_summary)}</span>
+          </div>
+        `;
+      } else if (r.summary_text) {
+        summaryHtml = `<div class="report-summary-text">${escapeHtml(r.summary_text)}</div>`;
+      }
       
       return `
         <tr>
@@ -392,16 +410,16 @@ async function fetchReports() {
           <td><strong style="color: #e2e8f0;">${r.company_or_sector || '-'}</strong></td>
           <td>
             <a href="javascript:void(0)" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" class="report-title-link" title="📄 전체 제목:\n${escapeHtml(r.title)}\n\n👉 클릭 시 AI 3줄 요약 보기">
-              ${r.title}
+              ${escapeHtml(r.title)}
             </a>
-            ${summary}
+            ${summaryHtml}
           </td>
           <td>${r.broker || '-'}</td>
           <td style="font-size: 0.85rem; color: #94a3b8;">${r.report_date}</td>
           <td>
             <div class="table-actions">
-              <button class="btn-table-ai" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" title="AI 3줄 요약 모달 열기">
-                <span>🤖</span> AI요약
+              <button class="btn-table-ai" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" title="AI 3줄 요약 모달 열기" ${hasAiSummary ? 'style="background: linear-gradient(135deg, #10b981, #06b6d4);"' : ''}>
+                <span>${hasAiSummary ? '✨' : '🤖'}</span> ${hasAiSummary ? 'AI요약' : 'AI요약'}
               </button>
               <a href="${r.pdf_url}" target="_blank" class="pdf-btn" title="원문 PDF 파일 열기">
                 <span>PDF</span> ↗

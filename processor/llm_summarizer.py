@@ -40,9 +40,11 @@ def call_ollama(
         "system": system_prompt,
         "stream": False,
         "options": {
-            "temperature": 0.2,
+            "temperature": 0.3,
             "top_p": 0.9,
-            "num_ctx": 8192
+            "repeat_penalty": 1.15,
+            "num_predict": 1024,
+            "num_ctx": 4096
         }
     }
     if json_mode:
@@ -60,11 +62,18 @@ def call_ollama(
 
 def parse_json_safely(raw_text: str) -> Dict[str, Any]:
     """LLM 반환 텍스트에서 안전하게 JSON 파싱"""
+    if not raw_text:
+        return {}
+    clean_text = raw_text.strip()
+    if "```" in clean_text:
+        match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', clean_text)
+        if match:
+            clean_text = match.group(1).strip()
+            
     try:
-        return json.loads(raw_text)
+        return json.loads(clean_text)
     except Exception:
-        # Markdown 코드 블록 제거 후 재시도
-        match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        match = re.search(r'\{[\s\S]*\}', clean_text)
         if match:
             try:
                 return json.loads(match.group(0))
@@ -136,8 +145,20 @@ def summarize_single_report(
 {trimmed_text}
 """
 
-    raw_response = call_ollama(user_prompt, system_prompt, model=model, json_mode=True)
-    summary_data = parse_json_safely(raw_response)
+    try:
+        raw_response = call_ollama(user_prompt, system_prompt, model=model, json_mode=True)
+        summary_data = parse_json_safely(raw_response)
+    except Exception as e:
+        print(f"Warning: LLM generation error for report {report_id}: {e}")
+        # Fallback to rule-based summary
+        fallback_summary = (report.get("summary_text") or title)[:150]
+        summary_data = {
+            "one_line_summary": fallback_summary,
+            "sentiment": "중립",
+            "investment_points": [fallback_summary],
+            "financial_outlook": "추가 분석 대기",
+            "risk_factors": ["변동성 유의"]
+        }
     
     # 기본 필드 누락 방지
     summary_data.setdefault("one_line_summary", title)

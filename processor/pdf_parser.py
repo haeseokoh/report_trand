@@ -49,8 +49,8 @@ def download_pdf(pdf_url: str, report_id: int) -> Optional[str]:
         print(f"Error downloading PDF {pdf_url}: {e}")
         return None
 
-def extract_text_from_pdf(filepath: str, max_pages: int = 15) -> str:
-    """PyMuPDF를 사용한 고속 PDF 텍스트 추출"""
+def extract_text_from_pdf(filepath: str, max_pages: int = 30) -> str:
+    """PyMuPDF를 사용한 고속 PDF 텍스트 추출 (최대 30페이지)"""
     text_content = []
     try:
         with fitz.open(filepath) as doc:
