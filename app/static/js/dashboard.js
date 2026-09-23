@@ -3,7 +3,12 @@ let currentCategory = '';
 let currentSearch = '';
 let searchTimeout = null;
 let timelineChart = null;
-let currentLlmModel = localStorage.getItem('selected-llm-model') || 'qwen3:8b';
+let savedModel = localStorage.getItem('selected-llm-model');
+if (!savedModel || savedModel.startsWith('qwen2.5')) {
+  savedModel = 'qwen3:8b';
+  localStorage.setItem('selected-llm-model', 'qwen3:8b');
+}
+let currentLlmModel = savedModel;
 
 // Initialize on Load
 document.addEventListener("DOMContentLoaded", async () => {
@@ -65,17 +70,15 @@ async function loadModels() {
       models = [serverDefault];
     }
     
-    const savedModel = localStorage.getItem('selected-llm-model');
-    // 사용자가 이전에 저장한 값이 없거나, 이전 구버전 기본값(qwen2.5:7b)이면 서버 기본값(qwen3:8b)으로 자동 갱신
-    if (!savedModel || savedModel === 'qwen2.5:7b') {
-      currentLlmModel = serverDefault;
-      localStorage.setItem('selected-llm-model', currentLlmModel);
-    } else if (models.includes(savedModel)) {
-      currentLlmModel = savedModel;
-    } else {
-      currentLlmModel = serverDefault;
-      localStorage.setItem('selected-llm-model', currentLlmModel);
+    let stored = localStorage.getItem('selected-llm-model');
+    if (!stored || stored.startsWith('qwen2.5')) {
+      stored = models.includes('qwen3:8b') ? 'qwen3:8b' : serverDefault;
+      localStorage.setItem('selected-llm-model', stored);
+    } else if (!models.includes(stored)) {
+      stored = models.includes('qwen3:8b') ? 'qwen3:8b' : serverDefault;
+      localStorage.setItem('selected-llm-model', stored);
     }
+    currentLlmModel = stored;
     
     select.innerHTML = models.map(m => `
       <option value="${m}" ${m === currentLlmModel ? 'selected' : ''}>${m}</option>
@@ -94,7 +97,7 @@ function changeLlmModel() {
   localStorage.setItem('selected-llm-model', currentLlmModel);
   const badge = document.getElementById('ai-badge-model');
   if (badge) badge.innerText = currentLlmModel;
-  loadMarketIntelligence(false);
+  loadMarketIntelligence(true);
 }
 
 async function loadDashboardData() {
