@@ -77,15 +77,16 @@ def run_pipeline(crawl_pages: int = 2, max_process_pdf: int = 40):
         
     print(f"\n✅ 텍스트 & 키워드 분석 완료: {success_count}/{len(pending_reports)}건 성공")
     
-    print("\n" + "=" * 60)
-    print("🤖 [Step 3.5] Ollama (Qwen 2.5) AI 심층 3단 요약 사전 생성")
-    print("=" * 60)
     try:
-        from processor.llm_summarizer import summarize_single_report, get_available_models
+        from processor.llm_summarizer import DEFAULT_MODEL, summarize_single_report, get_available_models
         from db.database import get_report_ai_summary
         
         models = get_available_models()
-        chosen_model = "qwen2.5:7b" if "qwen2.5:7b" in models else (models[0] if models else "qwen2.5:7b")
+        chosen_model = DEFAULT_MODEL if DEFAULT_MODEL in models else (models[0] if models else DEFAULT_MODEL)
+        
+        print("\n" + "=" * 60)
+        print(f"🤖 [Step 3.5] Ollama ({chosen_model}) AI 심층 3단 요약 사전 생성")
+        print("=" * 60)
         
         ai_target_count = 0
         for report in pending_reports[:10]:

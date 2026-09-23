@@ -13,7 +13,7 @@
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   
   <!-- CSS Stylesheet with Cache Busting -->
-  <link rel="stylesheet" href="/static/css/style.css?v=20260923_dense_v4">
+  <link rel="stylesheet" href="/static/css/style.css?v=20260924_v3">
   
   <!-- Chart.js & WordCloud2 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -42,7 +42,8 @@
       <div class="model-select-wrapper">
         <span class="model-label">AI 모델</span>
         <select id="llm-model-select" class="model-select" onchange="changeLlmModel()">
-          <option value="qwen2.5:7b" selected>Qwen 2.5 7B</option>
+          <option value="qwen3:8b" selected>Qwen 3 8B</option>
+          <option value="qwen2.5:7b">Qwen 2.5 7B</option>
           <option value="qwen2.5:14b">Qwen 2.5 14B</option>
         </select>
       </div>
@@ -97,7 +98,7 @@
       <div class="ai-intel-header">
         <div class="ai-intel-title">
           <span>✨</span> 데일리 AI 마켓 인텔리전스 브리프
-          <span class="ai-sparkle-badge" id="ai-badge-model">Qwen 2.5</span>
+          <span class="ai-sparkle-badge" id="ai-badge-model">AI Model</span>
         </div>
         <button class="btn-refresh-ai" onclick="loadMarketIntelligence(true)">
           <span>🔄</span> 다시 생성
@@ -105,8 +106,8 @@
       </div>
 
       <div id="ai-intel-content">
-        <div style="text-align: center; color: #cbd5e1; padding: 1.5rem;">
-          <div class="spinner spinner-purple" style="margin-bottom: 0.5rem;"></div>
+        <div style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">
+          <div class="spinner" style="margin-bottom: 0.5rem;"></div>
           <div>로컬 AI 모델이 최근 리포트를 종합 분석 중입니다...</div>
         </div>
       </div>
@@ -239,15 +240,15 @@
       </div>
       
       <div class="modal-body" id="modal-body">
-        <div style="text-align: center; padding: 3rem; color: #94a3b8;">
-          <div class="spinner spinner-purple" style="margin-bottom: 0.75rem;"></div>
-          <div>로컬 Qwen 2.5 모델이 분석을 생성하고 있습니다...</div>
+        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+          <div class="spinner" style="margin-bottom: 0.75rem;"></div>
+          <div>로컬 AI 모델이 분석을 생성하고 있습니다...</div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Javascript Logic -->
-  <script src="/static/js/dashboard.js?v=20260923_dense_v4"></script>
+  <script src="/static/js/dashboard.js?v=20260924_v3"></script>
 </body>
 </html>

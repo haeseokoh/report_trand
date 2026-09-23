@@ -21,7 +21,8 @@ from processor.llm_summarizer import (
     summarize_single_report,
     generate_theme_brief,
     generate_market_intelligence,
-    get_available_models
+    get_available_models,
+    DEFAULT_MODEL
 )
 from pipeline import run_pipeline
 
@@ -90,13 +91,13 @@ def api_reports(
 
 @app.get("/api/llm/models")
 def api_llm_models():
-    """사용 가능한 Ollama 모델 목록"""
-    return {"models": get_available_models()}
+    """사용 가능한 Ollama 모델 목록 및 기본 모델"""
+    return {"models": get_available_models(), "default_model": DEFAULT_MODEL}
 
 @app.get("/api/reports/{report_id}/ai-summary")
 def api_report_ai_summary(
     report_id: int,
-    model: str = Query("qwen2.5:7b"),
+    model: str = Query(DEFAULT_MODEL),
     refresh: bool = Query(False)
 ):
     """단일 리포트 3줄 AI 심층 요약"""
@@ -109,7 +110,7 @@ def api_report_ai_summary(
 @app.get("/api/themes/{theme_name}/ai-brief")
 def api_theme_ai_brief(
     theme_name: str,
-    model: str = Query("qwen2.5:7b"),
+    model: str = Query(DEFAULT_MODEL),
     refresh: bool = Query(False)
 ):
     """급상승 테마 다중 리포트 종합 브리프"""
@@ -121,7 +122,7 @@ def api_theme_ai_brief(
 
 @app.get("/api/market/ai-brief")
 def api_market_ai_brief(
-    model: str = Query("qwen2.5:7b"),
+    model: str = Query(DEFAULT_MODEL),
     refresh: bool = Query(False)
 ):
     """데일리 마켓 인텔리전스 AI 브리프"""

@@ -3,12 +3,12 @@ let currentCategory = '';
 let currentSearch = '';
 let searchTimeout = null;
 let timelineChart = null;
-let currentLlmModel = 'qwen2.5:7b';
+let currentLlmModel = localStorage.getItem('selected-llm-model') || 'qwen3:8b';
 
 // Initialize on Load
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
-  loadModels();
+  await loadModels();
   loadDashboardData();
   loadMarketIntelligence();
   checkCrawlerStatus();
@@ -30,6 +30,9 @@ function toggleTheme() {
   // 차트 및 워드클라우드 재렌더링
   if (typeof fetchTopKeywordsAndWordCloud === 'function') {
     fetchTopKeywordsAndWordCloud();
+  }
+  if (typeof fetchTimeline === 'function') {
+    fetchTimeline();
   }
 }
 
@@ -56,12 +59,30 @@ async function loadModels() {
     if (!select || !data.models) return;
     
     // 모델 옵션 갱신
-    const models = data.models.filter(m => m.includes('qwen') || m.includes('gemma') || m.includes('exaone') || m.includes('mistral'));
-    if (models.length > 0) {
-      select.innerHTML = models.map(m => `
-        <option value="${m}" ${m === currentLlmModel ? 'selected' : ''}>${m}</option>
-      `).join('');
+    let models = data.models;
+    const serverDefault = data.default_model || 'qwen3:8b';
+    if (!models || models.length === 0) {
+      models = [serverDefault];
     }
+    
+    const savedModel = localStorage.getItem('selected-llm-model');
+    // 사용자가 이전에 저장한 값이 없거나, 이전 구버전 기본값(qwen2.5:7b)이면 서버 기본값(qwen3:8b)으로 자동 갱신
+    if (!savedModel || savedModel === 'qwen2.5:7b') {
+      currentLlmModel = serverDefault;
+      localStorage.setItem('selected-llm-model', currentLlmModel);
+    } else if (models.includes(savedModel)) {
+      currentLlmModel = savedModel;
+    } else {
+      currentLlmModel = serverDefault;
+      localStorage.setItem('selected-llm-model', currentLlmModel);
+    }
+    
+    select.innerHTML = models.map(m => `
+      <option value="${m}" ${m === currentLlmModel ? 'selected' : ''}>${m}</option>
+    `).join('');
+    
+    const badge = document.getElementById('ai-badge-model');
+    if (badge) badge.innerText = currentLlmModel;
   } catch (err) {
     console.error('Failed to load LLM models:', err);
   }
@@ -70,7 +91,9 @@ async function loadModels() {
 function changeLlmModel() {
   const select = document.getElementById('llm-model-select');
   currentLlmModel = select.value;
-  document.getElementById('ai-badge-model').innerText = currentLlmModel;
+  localStorage.setItem('selected-llm-model', currentLlmModel);
+  const badge = document.getElementById('ai-badge-model');
+  if (badge) badge.innerText = currentLlmModel;
   loadMarketIntelligence(false);
 }
 
@@ -90,8 +113,8 @@ async function loadMarketIntelligence(forceRefresh = false) {
   const container = document.getElementById('ai-intel-content');
   if (forceRefresh) {
     container.innerHTML = `
-      <div style="text-align: center; color: #cbd5e1; padding: 2rem;">
-        <div class="spinner spinner-purple" style="margin-bottom: 0.5rem;"></div>
+      <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+        <div class="spinner" style="margin-bottom: 0.5rem;"></div>
         <div>새로운 관점으로 마켓 인텔리전스를 재합성하고 있습니다...</div>
       </div>
     `;
@@ -326,6 +349,11 @@ async function fetchTimeline() {
     
     if (timelineChart) timelineChart.destroy();
     
+    const isLight = document.body.classList.contains('theme-light');
+    const legendColor = isLight ? '#334155' : '#cbd5e1';
+    const tickColor = isLight ? '#475569' : '#94a3b8';
+    const gridColor = isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)';
+    
     timelineChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -340,8 +368,8 @@ async function fetchTimeline() {
           legend: {
             position: 'top',
             labels: {
-              color: '#9ca3af',
-              font: { family: 'Outfit, sans-serif', size: 12, weight: 'bold' },
+              color: legendColor,
+              font: { family: 'Pretendard, Inter, sans-serif', size: 12, weight: '600' },
               usePointStyle: true,
               boxWidth: 8
             }
@@ -349,12 +377,12 @@ async function fetchTimeline() {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#6b7280', font: { size: 11 } }
+            grid: { color: gridColor },
+            ticks: { color: tickColor, font: { size: 11 } }
           },
           y: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#6b7280', font: { size: 11 }, precision: 0 }
+            grid: { color: gridColor },
+            ticks: { color: tickColor, font: { size: 11 }, precision: 0 }
           }
         }
       }
@@ -447,18 +475,18 @@ async function fetchReports() {
       return `
         <tr>
           <td><span class="cat-badge ${cat.cls}">${cat.name}</span></td>
-          <td><strong style="color: #e2e8f0;">${r.company_or_sector || '-'}</strong></td>
+          <td><strong class="report-target-name">${escapeHtml(r.company_or_sector || '-')}</strong></td>
           <td>
             <a href="javascript:void(0)" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" class="report-title-link" title="📄 전체 제목:\n${escapeHtml(r.title)}\n\n👉 클릭 시 AI 3줄 요약 보기">
               ${escapeHtml(r.title)}
             </a>
             ${summaryHtml}
           </td>
-          <td>${r.broker || '-'}</td>
-          <td style="font-size: 0.85rem; color: #94a3b8;">${r.report_date}</td>
+          <td style="color: var(--text-primary);">${escapeHtml(r.broker || '-')}</td>
+          <td style="font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap;">${r.report_date}</td>
           <td>
             <div class="table-actions">
-              <button class="btn-table-ai" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" title="AI 3줄 요약 모달 열기" ${hasAiSummary ? 'style="background: linear-gradient(135deg, #10b981, #06b6d4);"' : ''}>
+              <button class="btn-table-ai" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')" title="AI 3줄 요약 모달 열기">
                 <span>${hasAiSummary ? '✨' : '🤖'}</span> ${hasAiSummary ? 'AI요약' : 'AI요약'}
               </button>
               <a href="${r.pdf_url}" target="_blank" class="pdf-btn" title="원문 PDF 파일 열기">
@@ -482,8 +510,8 @@ function openModal(titleHtml) {
   
   title.innerHTML = titleHtml;
   body.innerHTML = `
-    <div style="text-align: center; padding: 3rem; color: #94a3b8;">
-      <div class="spinner spinner-purple" style="margin-bottom: 0.75rem;"></div>
+    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+      <div class="spinner" style="margin-bottom: 0.75rem;"></div>
       <div>로컬 AI (${currentLlmModel})가 심층 분석을 생성하고 있습니다...</div>
     </div>
   `;
@@ -520,8 +548,8 @@ async function openReportAiModal(reportId, reportTitle) {
     
     body.innerHTML = `
       <div style="margin-bottom: 1.25rem;">
-        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.25rem;">대상 리포트</div>
-        <div style="font-size: 1.15rem; font-weight: 700; color: #fff;">${reportTitle}</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">대상 리포트</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-heading);">${reportTitle}</div>
       </div>
 
       <div class="modal-section">
@@ -542,7 +570,7 @@ async function openReportAiModal(reportId, reportTitle) {
       ${data.financial_outlook ? `
         <div class="modal-section">
           <div class="modal-section-title"><span>📊</span> 실적 전망 & 목표주가 산정 근거</div>
-          <div style="font-size: 0.9rem; color: #cbd5e1; background: rgba(0,0,0,0.25); padding: 0.75rem 1rem; border-radius: 8px; line-height: 1.5;">
+          <div class="modal-outlook-box">
             ${data.financial_outlook}
           </div>
         </div>
@@ -550,7 +578,7 @@ async function openReportAiModal(reportId, reportTitle) {
 
       ${risksHtml ? `
         <div class="modal-section">
-          <div class="modal-section-title" style="color: #f87171;"><span>⚠️</span> 주요 리스크 및 변수</div>
+          <div class="modal-section-title"><span>⚠️</span> 주요 리스크 및 변수</div>
           <ul class="modal-list">
             ${risksHtml}
           </ul>
@@ -559,7 +587,7 @@ async function openReportAiModal(reportId, reportTitle) {
     `;
   } catch (err) {
     document.getElementById('modal-body').innerHTML = `
-      <div style="text-align: center; color: #f87171; padding: 2rem;">
+      <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
         AI 요약 생성 중 오류가 발생했습니다.<br>
         Ollama 서비스 상태를 확인해 주세요.
       </div>
@@ -569,7 +597,7 @@ async function openReportAiModal(reportId, reportTitle) {
 
 // Open Theme AI Brief Modal
 async function openThemeAiModal(themeName) {
-  openModal(`<span>🚀</span> 테마 종합 AI 브리프 : <b style="color:#38bdf8;">${themeName}</b>`);
+  openModal(`<span>🚀</span> 테마 종합 AI 브리프 : <b style="color:var(--text-heading);">${themeName}</b>`);
   
   try {
     const res = await fetch(`/api/themes/${encodeURIComponent(themeName)}/ai-brief?model=${encodeURIComponent(currentLlmModel)}`);
@@ -579,7 +607,7 @@ async function openThemeAiModal(themeName) {
     const data = await res.json();
     
     const beneficiariesHtml = (data.top_beneficiaries || []).map(b => `
-      <span class="ai-sector-pill" style="font-size:0.85rem; padding:0.3rem 0.7rem;">${b}</span>
+      <span class="ai-sector-pill" style="font-size:0.85rem; padding:0.25rem 0.65rem;">${b}</span>
     `).join('');
     
     const catalystsHtml = (data.catalysts || []).map(c => `<li>${c}</li>`).join('');
@@ -588,14 +616,14 @@ async function openThemeAiModal(themeName) {
     body.innerHTML = `
       <div class="modal-section">
         <div class="modal-section-title"><span>🔥</span> 시장 주목 배경 & 모멘텀</div>
-        <div class="modal-one-liner" style="border-left-color: #38bdf8; background: rgba(56, 189, 248, 0.08);">
+        <div class="modal-one-liner">
           ${data.market_driver || '-'}
         </div>
       </div>
 
       <div class="modal-section">
         <div class="modal-section-title"><span>📑</span> 증권가 컨센서스 & 핵심 시각</div>
-        <div style="font-size: 0.95rem; color: #e2e8f0; background: rgba(0,0,0,0.3); padding: 0.9rem 1.1rem; border-radius: 8px; line-height: 1.6;">
+        <div class="modal-outlook-box">
           ${data.consensus || '-'}
         </div>
       </div>
@@ -620,7 +648,7 @@ async function openThemeAiModal(themeName) {
 
       ${risksHtml ? `
         <div class="modal-section">
-          <div class="modal-section-title" style="color: #f87171;"><span>⚠️</span> 투자 유의점 & 리스크</div>
+          <div class="modal-section-title"><span>⚠️</span> 투자 유의점 & 리스크</div>
           <ul class="modal-list">
             ${risksHtml}
           </ul>
@@ -628,17 +656,17 @@ async function openThemeAiModal(themeName) {
       ` : ''}
 
       ${(data.source_reports && data.source_reports.length > 0) ? `
-        <div class="modal-section" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08);">
-          <div class="modal-section-title" style="color: #93c5fd;"><span>📚</span> 분석에 참고한 원본 리포트 (${data.source_reports.length}건)</div>
+        <div class="modal-section" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+          <div class="modal-section-title"><span>📚</span> 분석에 참고한 원본 리포트 (${data.source_reports.length}건)</div>
           <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem;">
             ${data.source_reports.map(r => {
               const fullT = `${r.company_or_sector ? `[${r.company_or_sector}] ` : ''}${r.title}`;
               const tTip = `📄 풀네임: ${fullT}\n증권사: ${r.broker} | 일자: ${r.report_date}`;
               return `
-              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:0.45rem 0.75rem; border-radius:6px; font-size:0.8rem; border:1px solid rgba(255,255,255,0.04);" title="${escapeHtml(tTip)}">
+              <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-surface); padding:0.45rem 0.75rem; border-radius:6px; font-size:0.8rem; border:1px solid var(--border-subtle);" title="${escapeHtml(tTip)}">
                 <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; margin-right:0.5rem;">
                   <span class="cat-badge cat-company" style="font-size:0.68rem; padding:0.1rem 0.35rem; margin-right:0.35rem;">${r.broker || '증권'}</span>
-                  <span style="color:#e2e8f0; cursor:pointer;" title="${escapeHtml(tTip)}" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')">${fullT}</span>
+                  <span style="color:var(--text-primary); cursor:pointer;" title="${escapeHtml(tTip)}" onclick="openReportAiModal(${r.id}, '${escapeHtml(r.title)}')">${fullT}</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:0.4rem; white-space:nowrap;">
                   <span style="color:var(--text-muted); font-size:0.72rem;">${r.report_date}</span>
@@ -652,7 +680,7 @@ async function openThemeAiModal(themeName) {
     `;
   } catch (err) {
     document.getElementById('modal-body').innerHTML = `
-      <div style="text-align: center; color: #f87171; padding: 2rem;">
+      <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
         테마 브리프 생성 중 오류가 발생했습니다.
       </div>
     `;

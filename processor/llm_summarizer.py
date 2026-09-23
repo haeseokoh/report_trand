@@ -1,6 +1,8 @@
+import os
 import requests
 import json
 import re
+from pathlib import Path
 from typing import Dict, Any, Optional, List
 from db.database import (
     get_report_by_id,
@@ -12,8 +14,23 @@ from db.database import (
 )
 import sqlite3
 
-OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "qwen2.5:7b"
+# Load .env configuration
+def _load_env():
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if env_path.exists():
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k, v = k.strip(), v.strip()
+                    if k not in os.environ:
+                        os.environ[k] = v
+
+_load_env()
+
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+DEFAULT_MODEL = os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b")
 
 def get_available_models() -> List[str]:
     """설치된 Ollama 모델 목록 조회"""
@@ -21,6 +38,9 @@ def get_available_models() -> List[str]:
         resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3)
         if resp.status_code == 200:
             models = [m["name"] for m in resp.json().get("models", [])]
+            # DEFAULT_MODEL이 있고 목록에 없다면 맨 앞에 추가하거나 목록 반환
+            if DEFAULT_MODEL not in models:
+                models.insert(0, DEFAULT_MODEL)
             return models
         return [DEFAULT_MODEL]
     except Exception:
