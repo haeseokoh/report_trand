@@ -721,7 +721,9 @@ function debounceSearch() {
   }, 300);
 }
 
-// Crawler Trigger
+// Crawler Trigger & Status Management
+let crawlerPollInterval = null;
+
 async function triggerCrawl() {
   const btn = document.getElementById('btn-run-crawler');
   const icon = document.getElementById('crawler-btn-icon');
@@ -734,10 +736,16 @@ async function triggerCrawl() {
   try {
     const res = await fetch('/api/pipeline/run?pages=2&max_pdfs=35', { method: 'POST' });
     const data = await res.json();
-    alert(data.message);
-    pollCrawlerStatus();
+    
+    if (res.ok) {
+      showToast('🚀 ' + (data.message || '리포트 수집 및 분석을 백그라운드에서 시작했습니다.'), 'info');
+      pollCrawlerStatus();
+    } else {
+      showToast('ℹ️ ' + (data.message || '현재 작업이 진행 중입니다.'), 'warning');
+      pollCrawlerStatus();
+    }
   } catch (err) {
-    alert('작업 시작 요청 중 오류가 발생했습니다.');
+    showToast('❌ 작업 시작 요청 중 오류가 발생했습니다.', 'error');
     resetCrawlButton();
   }
 }
@@ -747,8 +755,16 @@ async function checkCrawlerStatus() {
     const res = await fetch('/api/pipeline/status');
     if (!res.ok) return;
     const data = await res.json();
-    if (data.is_running) setButtonCrawlingState();
-    else resetCrawlButton();
+    if (data.is_running) {
+      setButtonCrawlingState();
+      if (!crawlerPollInterval) {
+        pollCrawlerStatus();
+      }
+    } else {
+      if (!crawlerPollInterval) {
+        resetCrawlButton();
+      }
+    }
   } catch (err) {}
 }
 
@@ -756,34 +772,77 @@ function setButtonCrawlingState() {
   const btn = document.getElementById('btn-run-crawler');
   const icon = document.getElementById('crawler-btn-icon');
   const text = document.getElementById('crawler-btn-text');
-  btn.disabled = true;
-  icon.innerHTML = '<div class="spinner"></div>';
-  text.innerText = '백그라운드 수집/분석 중...';
+  if (btn) btn.disabled = true;
+  if (icon) icon.innerHTML = '<div class="spinner"></div>';
+  if (text) text.innerText = '백그라운드 수집/분석 중...';
 }
 
 function resetCrawlButton() {
   const btn = document.getElementById('btn-run-crawler');
   const icon = document.getElementById('crawler-btn-icon');
   const text = document.getElementById('crawler-btn-text');
-  btn.disabled = false;
-  icon.innerHTML = '⚡';
-  text.innerText = '최신 리포트 수집 & 분석';
+  if (btn) btn.disabled = false;
+  if (icon) icon.innerHTML = '⚡';
+  if (text) text.innerText = '최신 리포트 수집 & 분석';
 }
 
 function pollCrawlerStatus() {
-  const interval = setInterval(async () => {
+  if (crawlerPollInterval) {
+    clearInterval(crawlerPollInterval);
+  }
+  
+  setButtonCrawlingState();
+  
+  crawlerPollInterval = setInterval(async () => {
     try {
       const res = await fetch('/api/pipeline/status');
+      if (!res.ok) return;
       const data = await res.json();
       if (!data.is_running) {
-        clearInterval(interval);
+        clearInterval(crawlerPollInterval);
+        crawlerPollInterval = null;
         resetCrawlButton();
+        showToast('✅ 최신 리포트 수집 및 트렌드 분석이 완료되었습니다!', 'success');
         loadDashboardData();
         loadMarketIntelligence(true);
+      } else {
+        setButtonCrawlingState();
       }
     } catch (err) {
-      clearInterval(interval);
-      resetCrawlButton();
+      console.error('Crawler status polling error:', err);
     }
-  }, 4000);
+  }, 2000);
 }
+
+// Toast Notification System
+function showToast(message, type = 'info', duration = 3500) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerText = message;
+  
+  container.appendChild(toast);
+  
+  // Animation in
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+  
+  // Auto remove
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, duration);
+}
+

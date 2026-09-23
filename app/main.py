@@ -138,9 +138,10 @@ is_running_pipeline = False
 
 def background_run_pipeline(pages: int, max_pdfs: int):
     global is_running_pipeline
-    is_running_pipeline = True
     try:
         run_pipeline(crawl_pages=pages, max_process_pdf=max_pdfs)
+    except Exception as e:
+        print(f"❌ 파이프라인 백그라운드 실행 오류: {e}")
     finally:
         is_running_pipeline = False
 
@@ -155,6 +156,7 @@ def api_run_pipeline(
     if is_running_pipeline:
         return JSONResponse(status_code=400, content={"message": "현재 이미 수집 및 분석 작업이 진행 중입니다."})
         
+    is_running_pipeline = True
     background_tasks.add_task(background_run_pipeline, pages, max_pdfs)
     return {"message": f"수집(카테고리당 {pages}p) 및 분석({max_pdfs}건) 작업을 시작했습니다.", "status": "started"}
 
